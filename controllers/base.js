@@ -95,7 +95,7 @@ function Controller(table, options = defaultOptions) {
 
         }
         if (!query?.exists) {
-            return { uid }
+            return null
 
             // throw Error("Document dont exist");
         }
@@ -176,10 +176,10 @@ function Controller(table, options = defaultOptions) {
         }
         delete body.year
         delete body.month
-        await this.collection.doc(uid).update({
+        await this.collection.doc(uid).set({
             ...body,
             last_update: moment().toDate()
-        })
+        }, { merge: true })
         return true
     };
     /**
@@ -487,17 +487,17 @@ function Controller(table, options = defaultOptions) {
      * @param {Populate[]} options.populates - options to make an inner join
      * @returns {Promise<excelJS.Workbook>} 
     */
-    this.generateXLS = async function (options = this.options, filters = {}) {
+    this.generateXLS = async function (data, options = this.options) {
 
         const workbook = new excelJS.Workbook();
-        const worksheet = workbook.addWorksheet(options.fileName);
+        const worksheet = workbook.addWorksheet("reporte");
 
         const exportFields = Object.entries(options.ExportFields)
-        worksheet.columns = exportFields.map(([field, title]) => ({ header: title, key: field, width: 40 }))
+        const columns = exportFields.map(([field, title]) => ({ header: title, key: field, width: 30 }))
+        worksheet.columns = columns
 
-        const data = await this.getTable({ ...options, withoutPagination: true }, filters)
         let counter = 1;
-        data.documents.forEach((row) => {
+        data.forEach((row) => {
             row.s_no = counter;
             worksheet.addRow(row);
             counter++;
