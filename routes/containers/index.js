@@ -81,12 +81,18 @@ router.get("/:uid", async (req, res) => {
     res.status(200).send(document)
 
 })
-router.post("/", async (req, res) => {
+router.post("/create", async (req, res) => {
     try {
 
         const payload = req.body
+        let container = { ...payload, uid: payload.container}
+        const query = axios.get(`${ship}?authCode=${auth}&requestId=${container.uid}`)
+        const [result] = await Promise.allSettled([query])
+        if(result.status === "fulfilled"){
+            container = { ...container, ...(result.value.data[0])}
+        }
 
-        const uid = await containers.create(payload)
+        const uid = await containers.create(container)
         res.status(201).send(uid)
 
     } catch (err) {
