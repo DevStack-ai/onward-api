@@ -49,12 +49,16 @@ router.post("/", async (req, res) => {
     }
 
 })
-router.post("/all", async (req, res) => {
+router.post("/table", async (req, res) => {
     try {
 
-        const options = { withoutPagination: true, includeDeprecated: true, manualSort: true }
+        const page = req.body.page || 1
+        const itemsPerPage = req.body.itemsPerPage || 15
 
-        const table = await containers.getTable(options)
+        const options = { page, itemsPerPage, includeDeprecated: true }
+        const filters = req.body.filters
+
+        const table = await containers.getTable(options, filters)
         res.send({
             pages: table.pages,
             documents: table.documents,
