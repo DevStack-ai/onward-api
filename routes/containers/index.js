@@ -81,8 +81,14 @@ router.get("/:uid", async (req, res) => {
         res.status(404).send({ message: "Container not found" })
         return
     }
+    let container = {}
+    const query = axios.get(`${ship}?authCode=${auth}&requestId=${document.uid}`)
+    const [result] = await Promise.allSettled([query])
+    if(result.status === "fulfilled"){
+        container = { ...document, ...(result.value.data[0])}
+    }
 
-    res.status(200).send(document)
+    res.status(200).send(container)
 
 })
 router.post("/create", async (req, res) => {
