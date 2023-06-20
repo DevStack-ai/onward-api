@@ -76,16 +76,15 @@ router.get("/:uid", async (req, res) => {
 
     const uid = req.params.uid
     const document = await containers.get(uid)
-
     if (!document) {
         res.status(404).send({ message: "Container not found" })
         return
     }
-    let container = {}
+    let container = { ...document }
     const query = axios.get(`${ship}?authCode=${auth}&requestId=${document.uid}`)
     const [result] = await Promise.allSettled([query])
-    if(result.status === "fulfilled"){
-        container = { ...document, ...(result.value.data[0])}
+    if (result.status === "fulfilled") {
+        container = { ...container, ...(result.value.data[0]) }
     }
 
     res.status(200).send(container)
@@ -95,11 +94,11 @@ router.post("/create", async (req, res) => {
     try {
 
         const payload = req.body
-        let container = { ...payload, uid: payload.container}
+        let container = { ...payload, uid: payload.container || null }
         const query = axios.get(`${ship}?authCode=${auth}&requestId=${container.uid}`)
         const [result] = await Promise.allSettled([query])
-        if(result.status === "fulfilled"){
-            container = { ...container, ...(result.value.data[0])}
+        if (result.status === "fulfilled") {
+            container = { ...container, ...(result.value.data[0]) }
         }
 
         const uid = await containers.create(container)
@@ -217,7 +216,7 @@ router.post("/export", async (req, res) => {
         }
 
 
-        
+
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet("reporte");
 
