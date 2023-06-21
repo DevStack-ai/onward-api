@@ -8,9 +8,7 @@ const ExcelJS = require('exceljs');
 const ship = "https://shipsgo.com/api/v1.1/ContainerService/GetContainerInfo/"
 const auth = "4456b633eafbae2220fa4311d6d04dd0"
 router.post("/", async (req, res) => {
-
     try {
-
         console.log(req.body)
         const uids = req.body.containers
         let queue = []
@@ -59,6 +57,24 @@ router.post("/table", async (req, res) => {
         const filters = req.body.filters
 
         const table = await containers.getTable(options, filters)
+        res.send({
+            pages: table.pages,
+            documents: table.documents,
+            total: table.count,
+        });
+    } catch (err) {
+        console.log(err);
+
+        res.status(400).send({ message: "server error" })
+        return;
+    }
+})
+router.post("/all", async (req, res) => {
+    try {
+
+        const options = { withoutPagination: true, includeDeprecated: true, manualSort: true }
+
+        const table = await containers.getTable(options)
         res.send({
             pages: table.pages,
             documents: table.documents,
