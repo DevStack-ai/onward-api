@@ -9,7 +9,6 @@ const ship = "https://shipsgo.com/api/v1.1/ContainerService/GetContainerInfo/"
 const auth = "4456b633eafbae2220fa4311d6d04dd0"
 router.post("/", async (req, res) => {
     try {
-        console.log(req.body)
         const uids = req.body.containers
         let queue = []
 
@@ -34,7 +33,7 @@ router.post("/", async (req, res) => {
         queue = []
         for (const track of response) {
             const uid = track.ContainerNumber
-            track.last_request = moment().toDate()
+            track.last_api_request = moment().format("YYYY-MM-DD HH:mm")
             const query = containers.update(uid, track)
             queue.push(query)
         }
@@ -49,6 +48,7 @@ router.post("/", async (req, res) => {
 })
 router.post("/table", async (req, res) => {
     try {
+        let queue = []
 
         const page = req.body.page || 1
         const itemsPerPage = req.body.itemsPerPage || 15
@@ -57,9 +57,41 @@ router.post("/table", async (req, res) => {
         const filters = req.body.filters
 
         const table = await containers.getTable(options, filters)
+
+        const uids = table.documents.map(d => d.uid)
+        for (const container of table.documents) {
+            const today = moment()
+            const last_api = container.last_api_request ? moment(container.last_api_request) : moment()
+            const difference = today.diff(last_api, "hours")
+            if (difference >= 1 || !container.last_api_request) {
+                const query = axios.get(`${ship}?authCode=${auth}&requestId=${container.uid}`)
+                queue.push(query)
+            }
+        }
+        const result = await Promise.allSettled(queue)
+        const fulfilled = result.filter(q => q.status === "fulfilled")
+        const response = fulfilled.map(q => q.value.data[0])
+
+        const documents = table.documents.map(container => {
+            const api = response.find(d => d.ContainerNumber === container.uid) || {}
+            return {
+                ...container,
+                ...api,
+            }
+        })
+        queue = []
+        for (const track of response) {
+            const uid = track.ContainerNumber
+            track.last_api_request = moment().format("YYYY-MM-DD HH:mm")
+            const query = containers.update(uid, track)
+            queue.push(query)
+        }
+
+        await Promise.allSettled(queue)
+
         res.send({
             pages: table.pages,
-            documents: table.documents,
+            documents: documents,
             total: table.count,
         });
     } catch (err) {
@@ -97,24 +129,30 @@ router.get("/:uid", async (req, res) => {
         return
     }
     let container = { ...document }
-    const query = axios.get(`${ship}?authCode=${auth}&requestId=${document.uid}`)
-    const [result] = await Promise.allSettled([query])
-    if (result.status === "fulfilled") {
-        container = { ...container, ...(result.value.data[0]) }
+
+    const today = moment()
+    const last_api = container.last_api_request ? moment(container.last_api_request) : moment()
+    const difference = today.diff(last_api, "hours")
+    if (difference >= 1 || !container.last_api_request) {
+        const query = axios.get(`${ship}?authCode=${auth}&requestId=${document.uid}`)
+        const [result] = await Promise.allSettled([query])
+        if (result.status === "fulfilled") {
+            container = { ...container, ...(result.value.data[0]), last_api_request: moment().format("YYYY-MM-DD HH:mm") }
+        }
     }
 
     res.status(200).send(container)
-
+    await containers.update(uid, container)
 })
 router.post("/create", async (req, res) => {
     try {
 
         const payload = req.body
-        let container = { ...payload, uid: payload.container || null }
+        let container = { ...payload, uid: null }
         const query = axios.get(`${ship}?authCode=${auth}&requestId=${container.uid}`)
         const [result] = await Promise.allSettled([query])
         if (result.status === "fulfilled") {
-            container = { ...container, ...(result.value.data[0]) }
+            container = { ...container, ...(result.value.data[0]), last_api_request: moment().format("YYYY-MM-DD HH:mm") }
         }
 
         const uid = await containers.create(container)
