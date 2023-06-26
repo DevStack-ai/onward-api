@@ -283,7 +283,12 @@ function Controller(table, options = defaultOptions) {
         let writeField = options.writeField || this.options.writeField
         let offset = itemsPerPage * (page - 1)//documents to skip
 
-
+        if (!options.ignoreWriteFilter) {
+            if (options.startDate && options.endDate) {
+                query = query.where(writeField, ">=", moment(`${options.startDate} 00:00:00`, "DD/MM/YYYY HH:mm:ss").toDate())
+                query = query.where(writeField, "<=", moment(`${options.endDate} 23:59:59`, "DD/MM/YYYY HH:mm:ss").toDate())
+            }
+        }
 
         //////////////////////////////////// filter by fields values and/or write dates 
         if (!_.isEmpty(filters)) {
@@ -301,13 +306,7 @@ function Controller(table, options = defaultOptions) {
 
             }
         }
-        const ignoreAutoFilter = filters.email || filters.personal_document
-        if (!options.ignoreWriteFilter && !ignoreAutoFilter) {
-            if (options.startDate && options.endDate) {
-                query = query.where(writeField, ">=", moment(`${options.startDate} 00:00:00`, "DD/MM/YYYY HH:mm:ss").toDate())
-                query = query.where(writeField, "<=", moment(`${options.endDate} 23:59:59`, "DD/MM/YYYY HH:mm:ss").toDate())
-            }
-        }
+
 
         //////////////////////////////////// includes deprecated documents
 
@@ -316,6 +315,9 @@ function Controller(table, options = defaultOptions) {
         }
 
         if (!options.manualSort) {
+            if (options.filterSortBy) {
+                query = query.orderBy(options.filterSortBy, orderDirection)
+            }
             query = query.orderBy(orderBy, orderDirection)
         }
 

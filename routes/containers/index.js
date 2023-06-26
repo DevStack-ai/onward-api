@@ -21,7 +21,6 @@ router.post("/", async (req, res) => {
         const result = await Promise.allSettled(queue)
         const fulfilled = result.filter(q => q.status === "fulfilled")
         const response = fulfilled.map(q => q.value.data[0])
-
         const data = uids.map(uid => {
             const api = response.find(d => d.ContainerNumber === uid) || {}
             const match = documents.find(d => d.uid === uid) || {}
@@ -52,8 +51,9 @@ router.post("/table", async (req, res) => {
 
         const page = req.body.page || 1
         const itemsPerPage = req.body.itemsPerPage || 15
+        const sortBy = 'status'
 
-        const options = { page, itemsPerPage, includeDeprecated: true }
+        const options = { page, itemsPerPage, includeDeprecated: true, filterSortBy: sortBy }
         const filters = req.body.filters
 
         const table = await containers.getTable(options, filters)

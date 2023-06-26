@@ -3,7 +3,7 @@ const router = express.Router()
 
 const auth = require("../../firebase/auth")
 const users = require('../../controllers/users')
-router.get("/", async (req, res) => {
+router.post("/table", async (req, res) => {
     try {
 
         const page = req.body.page || 1
