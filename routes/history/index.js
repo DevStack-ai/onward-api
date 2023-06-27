@@ -214,7 +214,7 @@ router.post("/export", async (req, res) => {
         const uids = req.body.containers
         let queue = []
 
-        const documents = await containers.getMultiple(uids, "array")
+        const documents = await history.getMultiple(uids, "array")
 
         for (const uid of uids) {
             const query = axios.get(`${ship}?authCode=${auth}&requestId=${uid}`)
