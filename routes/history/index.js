@@ -6,9 +6,7 @@ const containers = require("../../controllers/containers")
 const history = require("../../controllers/history")
 
 const ExcelJS = require('exceljs');
-const helpers = require("../../controllers/helpers")
 
-const db = require("../../firebase/firestore")
 
 const ship = "https://shipsgo.com/api/v1.1/ContainerService/GetContainerInfo/"
 const auth = "4456b633eafbae2220fa4311d6d04dd0"
@@ -17,7 +15,7 @@ router.post("/", async (req, res) => {
         const uids = req.body.containers
         let queue = []
 
-        const documents = await containers.getMultiple(uids, "array")
+        const documents = await history.getMultiple(uids, "array")
 
         for (const uid of uids) {
             const query = axios.get(`${ship}?authCode=${auth}&requestId=${uid}`)
@@ -38,7 +36,7 @@ router.post("/", async (req, res) => {
         for (const track of response) {
             const uid = track.ContainerNumber
             track.last_api_request = moment().format("YYYY-MM-DD HH:mm")
-            const query = containers.update(uid, track)
+            const query = history.update(uid, track)
             queue.push(query)
         }
 
@@ -65,7 +63,7 @@ router.post("/table", async (req, res) => {
         }
         const filters = req.body.filters
 
-        const table = await containers.getTable(options, filters)
+        const table = await history.getTable(options, filters)
 
         for (const container of table.documents) {
             const today = moment()
@@ -91,7 +89,7 @@ router.post("/table", async (req, res) => {
         for (const track of response) {
             const uid = track.ContainerNumber
             track.last_api_request = moment().format("YYYY-MM-DD HH:mm")
-            const query = containers.update(uid, track)
+            const query = history.update(uid, track)
             queue.push(query)
         }
 
@@ -114,7 +112,7 @@ router.post("/all", async (req, res) => {
 
         const options = { withoutPagination: true, includeDeprecated: true, manualSort: true }
 
-        const table = await containers.getTable(options)
+        const table = await history.getTable(options)
         res.send({
             pages: table.pages,
             documents: table.documents,
@@ -132,7 +130,7 @@ router.get("/:uid", async (req, res) => {
 
 
     const uid = req.params.uid
-    const document = await containers.get(uid)
+    const document = await history.get(uid)
     if (!document) {
         res.status(404).send({ message: "Container not found" })
         return
@@ -151,39 +149,9 @@ router.get("/:uid", async (req, res) => {
     }
 
     res.status(200).send(container)
-    await containers.update(uid, container)
+    await history.update(uid, container)
 })
-router.post("/create", async (req, res) => {
-    try {
 
-        const payload = req.body
-        let controller = containers
-        if (payload.close_date) {
-            payload.close_data_query = moment(payload.close_date).toDate()
-        } else {
-            payload.close_data_query = moment("1900-01-01").toDate()
-        }
-        if (payload.status) {
-            if (["PAGADO", "ANULADO"].includes(payload.status)) {
-                controller = history
-            }
-        }
-        let container = { ...payload, uid: null }
-        const query = axios.get(`${ship}?authCode=${auth}&requestId=${container.uid}`)
-        const [result] = await Promise.allSettled([query])
-        if (result.status === "fulfilled") {
-            container = { ...container, ...(result.value.data[0]), last_api_request: moment().format("YYYY-MM-DD HH:mm") }
-        }
-
-        const uid = await controller.create(container)
-        res.status(201).send(uid)
-
-    } catch (err) {
-        console.log(err);
-        res.status(400).send({ message: "server error" })
-        return;
-    }
-})
 router.put("/:uid", async (req, res) => {
     try {
 
@@ -196,19 +164,19 @@ router.put("/:uid", async (req, res) => {
             payload.close_data_query = moment("1900-01-01").toDate()
         }
         if (payload.status) {
-            if (["PAGADO", "ANULADO"].includes(payload.status)) {
-                const container = await containers.get(uid)
-                await history.create({
+            if (!["PAGADO", "ANULADO"].includes(payload.status)) {
+                const container = await history.get(uid)
+                await containers.create({
                     uid,
                     ...container,
                     ...payload
                 })
-                await containers.delete(uid)
+                await history.delete(uid)
                 res.status(201).send({ message: "updated successfully" })
                 return;
             }
         }
-        await containers.update(uid, payload)
+        await history.update(uid, payload)
 
         res.status(201).send({ message: "updated successfully" })
 
@@ -332,17 +300,5 @@ router.post("/export", async (req, res) => {
         res.status(400).send({ message: "server error" })
     }
 })
-router.post("/test", async (req, res) => {
-    try {
 
-        const query = await db.collection("own_containers").orderBy("close_data_query").get()
-        const containers = query.docs.map(helpers.toJSON).map(d => d.close_date)
-        res.send({ containers })
-    } catch (err) {
-        console.log(err);
-
-        res.status(400).send({ message: "server error" })
-        return;
-    }
-})
 module.exports = router
