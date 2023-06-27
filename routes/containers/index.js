@@ -141,6 +141,8 @@ router.get("/:uid", async (req, res) => {
 
     const today = moment()
     const last_api = container.last_api_request ? moment(container.last_api_request) : moment()
+    const difference = today.diff(last_api, "hours")
+
     if (difference >= 1 || !container.last_api_request) {
         const query = axios.get(`${ship}?authCode=${auth}&requestId=${document.container}`)
         const [result] = await Promise.allSettled([query])
