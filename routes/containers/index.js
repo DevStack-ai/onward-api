@@ -72,7 +72,7 @@ router.post("/table", async (req, res) => {
             const last_api = container.last_api_request ? moment(container.last_api_request) : moment()
             const difference = today.diff(last_api, "hours")
             if (difference >= 1 || !container.last_api_request) {
-                const query = axios.get(`${ship}?authCode=${auth}&requestId=${container.uid}`)
+                const query = axios.get(`${ship}?authCode=${auth}&requestId=${container.container}`)
                 queue.push(query)
             }
         }
@@ -141,10 +141,10 @@ router.get("/:uid", async (req, res) => {
 
     const today = moment()
     const last_api = container.last_api_request ? moment(container.last_api_request) : moment()
-    const difference = today.diff(last_api, "hours")
     if (difference >= 1 || !container.last_api_request) {
-        const query = axios.get(`${ship}?authCode=${auth}&requestId=${document.uid}`)
+        const query = axios.get(`${ship}?authCode=${auth}&requestId=${document.container}`)
         const [result] = await Promise.allSettled([query])
+        console.log(result)
         if (result.status === "fulfilled") {
             container = { ...container, ...(result.value.data[0]), last_api_request: moment().format("YYYY-MM-DD HH:mm") }
         }
@@ -169,7 +169,7 @@ router.post("/create", async (req, res) => {
             }
         }
         let container = { ...payload, uid: null }
-        const query = axios.get(`${ship}?authCode=${auth}&requestId=${container.uid}`)
+        const query = axios.get(`${ship}?authCode=${auth}&requestId=${container.container}`)
         const [result] = await Promise.allSettled([query])
         if (result.status === "fulfilled") {
             container = { ...container, ...(result.value.data[0]), last_api_request: moment().format("YYYY-MM-DD HH:mm") }
