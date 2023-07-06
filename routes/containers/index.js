@@ -131,13 +131,14 @@ router.post("/all", async (req, res) => {
 router.get("/:uid", async (req, res) => {
 
 
-    const uid = req.params.uid
+    const uid = req.params.uid.trim()
     const document = await containers.get(uid)
     if (!document) {
         res.status(404).send({ message: "Container not found" })
         return
     }
     let container = { ...document }
+    console.log({container})
 
     const today = moment()
     const last_api = container.last_api_request ? moment(container.last_api_request) : moment()
