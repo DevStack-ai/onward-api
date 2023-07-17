@@ -29,20 +29,21 @@ router.all('/webhook', async (req, res) => {
       const query = await axios.get(`${url}?docNo=${payload.UniqueId}`, { headers })
 
       const order = query.data
-
+      
       const container = {
-        "reference": `${payload.UniqueId}_${order.CustomerRef.Name}_${order.BillAddress.State}_${moment().format("YYYY")}`,
-        "reference_alt": payload.UniqueId,
+        "reference": order.CustomerPO,
+        "reference_alt": String(payload.UniqueId).padStart(4, "0"),
         "source": "",
         "company": "CGI",
+        "total_amount": order.TotalAmount,
         "customer": order.CustomerRef.Name,
         "status": "CERRADO - APROBADO POR EL CLIENTE",
-        "close_date": ""
+        "close_date": order.Date
       }
       console.log(container)
       // await ContainerController.create(container)
+      res.send(order)
     }
-    res.send("ok")
   } catch (err) {
     console.log(err)
   }
