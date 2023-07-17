@@ -21,6 +21,7 @@ app.use(cookieParser());
 app.use('/', indexRouter);
 
 app.use((req, res, next) => {
+  console.log(req.path)
   next(createError.NotFound());
 });
 
