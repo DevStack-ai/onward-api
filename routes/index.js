@@ -36,10 +36,11 @@ router.all('/webhook', async (req, res) => {
         "source": "",
         "company": "CGI",
         "customer": order.CustomerRef.Name,
-        "status": "EN PROCESO",
+        "status": "CERRADO - APROBADO POR EL CLIENTE",
         "close_date": ""
       }
-      await ContainerController.create(container)
+      console.log(container)
+      // await ContainerController.create(container)
     }
     res.send("ok")
   } catch (err) {
