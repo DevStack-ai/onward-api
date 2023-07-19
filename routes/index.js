@@ -2,6 +2,7 @@ const express = require('express');
 const { default: axios } = require('axios');
 const router = express.Router();
 const moment = require("moment")
+const LogsController = require('../controllers/logs');
 const ContainerController = require('../controllers/containers')
 router.get('/', (req, res) => {
   res.send("ok");
