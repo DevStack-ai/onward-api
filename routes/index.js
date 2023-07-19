@@ -32,7 +32,7 @@ router.all('/webhook', async (req, res) => {
     const container = {
       "reference": order.CustomerPO,
       "reference_alt": String(payload.UniqueId).padStart(4, "0"),
-      "source": "",
+      "source": "EUFORIA",
       "company": "CGI",
       "total_amount": order.TotalAmount,
       "customer": order.CustomerRef.Name,
