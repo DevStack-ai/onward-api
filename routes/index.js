@@ -23,8 +23,8 @@ router.all('/webhook', async (req, res) => {
       email,
       password
     }
-    console.log(payload)
 
+    console.log(payload)
     const query = await axios.get(`${url}?docNo=${payload.UniqueId}`, { headers })
 
     const order = query.data
@@ -41,8 +41,6 @@ router.all('/webhook', async (req, res) => {
     }
     await ContainerController.create(container)
     res.send(order)
-    return;
-    res.send("ok")
   } catch (err) {
     console.log(err)
   }
