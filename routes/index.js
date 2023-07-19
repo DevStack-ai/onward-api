@@ -24,26 +24,24 @@ router.all('/webhook', async (req, res) => {
       password
     }
     console.log(payload)
-    if (payload.ActionType === 1) {
 
-      const query = await axios.get(`${url}?docNo=${payload.UniqueId}`, { headers })
+    const query = await axios.get(`${url}?docNo=${payload.UniqueId}`, { headers })
 
-      const order = query.data
-      
-      const container = {
-        "reference": order.CustomerPO,
-        "reference_alt": String(payload.UniqueId).padStart(4, "0"),
-        "source": "",
-        "company": "CGI",
-        "total_amount": order.TotalAmount,
-        "customer": order.CustomerRef.Name,
-        "status": "CERRADO - APROBADO POR EL CLIENTE",
-        "close_date": order.Date
-      }
-      await ContainerController.create(container)
-      res.send(order)
-      return;
+    const order = query.data
+
+    const container = {
+      "reference": order.CustomerPO,
+      "reference_alt": String(payload.UniqueId).padStart(4, "0"),
+      "source": "",
+      "company": "CGI",
+      "total_amount": order.TotalAmount,
+      "customer": order.CustomerRef.Name,
+      "status": "CERRADO - APROBADO POR EL CLIENTE",
+      "close_date": order.Date
     }
+    await ContainerController.create(container)
+    res.send(order)
+    return;
     res.send("ok")
   } catch (err) {
     console.log(err)
