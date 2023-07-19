@@ -10,7 +10,7 @@ router.all('/webhook', async (req, res) => {
   try {
 
     const payload = req.body
-    // await LogsController.create(payload)
+    await LogsController.create(payload)
     const url = "https://services.ordertime.com/api/salesorder"
 
     const apiKey = "679a4193-297e-4821-b7de-9082129c13bf"
@@ -22,10 +22,9 @@ router.all('/webhook', async (req, res) => {
       email,
       password
     }
-
+    console.log(payload)
     if (payload.ActionType === 1) {
 
-      console.log(payload)
       const query = await axios.get(`${url}?docNo=${payload.UniqueId}`, { headers })
 
       const order = query.data
@@ -40,10 +39,11 @@ router.all('/webhook', async (req, res) => {
         "status": "CERRADO - APROBADO POR EL CLIENTE",
         "close_date": order.Date
       }
-      console.log(container)
-      // await ContainerController.create(container)
+      await ContainerController.create(container)
       res.send(order)
+      return;
     }
+    res.send("ok")
   } catch (err) {
     console.log(err)
   }
