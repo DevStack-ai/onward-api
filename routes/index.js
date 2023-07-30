@@ -45,7 +45,7 @@ router.all('/webhook', async (req, res) => {
       "close_date": order.Date
     }
     await ContainerController.create(container)
-    await axios.post("https://wge4iacxr4.execute-api.us-east-2.amazonaws.com/v1/insertar", order)
+    await axios.post("http://79.143.91.197/servicios/insertarContenedor.php", order)
     res.send(order)
   } catch (err) {
     console.log(err)
