@@ -28,18 +28,24 @@ router.all('/webhook', async (req, res) => {
     const query = await axios.get(`${url}?docNo=${payload.UniqueId}`, { headers })
 
     const order = query.data
+    console.log(order)
 
     const container = {
-      "reference": order.CustomerPO,
-      "reference_alt": String(payload.UniqueId).padStart(4, "0"),
       "source": "EUFORIA",
       "company": "CGI",
-      "total_amount": order.TotalAmount,
-      "customer": order.CustomerRef.Name,
       "status": "CERRADO - APROBADO POR EL CLIENTE",
+      "reference": order.CustomerPO,
+      "reference_alt": String(payload.UniqueId).padStart(4, "0"),
+      "total_amount": order.TotalAmount,
+      "customer_id": order.CustomerRef.Id,
+      "customer": order.CustomerRef.Name,
+      "docto_no": payload.UniqueId,
+      "trans_type": order.LineItems.length ? order.LineItems[0].TranType : "",
+      "order_time": payload.ActionDate,
       "close_date": order.Date
     }
     await ContainerController.create(container)
+    await axios.post("https://wge4iacxr4.execute-api.us-east-2.amazonaws.com/v1/insertar", order)
     res.send(order)
   } catch (err) {
     console.log(err)
