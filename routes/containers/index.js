@@ -138,7 +138,7 @@ router.get("/:uid", async (req, res) => {
         return
     }
     let container = { ...document }
-    console.log({container})
+    console.log({ container })
 
     const today = moment()
     const last_api = container.last_api_request ? moment(container.last_api_request) : moment()
@@ -193,6 +193,37 @@ router.put("/:uid", async (req, res) => {
         const uid = req.params.uid
 
         const payload = req.body
+        const _container = await containers.get(uid)
+        const container = { ..._container, ...payload }
+        const mock = {
+            "SO_NUMERO_DOC": container.docto_no,
+            "SO_COMPANY_CODE": "10",
+            "SO_COMPANY_DESC": container.company,
+            "SO_CUSTOMER_COD": container.customer_id,
+            "SO_CUSTOMER_NAME": container.customer,
+            "SO_STATUS_COD": "200",
+            "SO_STATUS": container.status,
+            "SO_MONTO": container.total_amount,
+            "Entry_Number": container.entry_number,
+            "Referencia": container.reference,
+            "Referencia2": container.reference_alt,
+            "Numero_Contenedor": container.ContainerNumber,
+            "Fecha_Cierre": container.close_date,
+            "Fecha_S_Bodega": container.checkout_date,
+            "F_Zarpe": container.departure_data,
+            "F_Arribo": container.arrival_date,
+            "FDA": container.fda,
+            "CBP": container.cbp,
+            "USDA": container.usda,
+            "LFD": container.lfd,
+            "LFD_Fee": container.lfd_fee,
+            "F_Estimada_Entrega": container.delivery_date,
+            "F_Confirmada_Entrega": container.estimated_date,
+            "OBS": container.obs
+        }
+
+        await axios.post("http://79.143.91.197/servicios/reporteBase.php?metodo=actualizar", mock)
+
         if (payload.close_date) {
             payload.close_data_query = moment(payload.close_date).toDate()
         } else {
