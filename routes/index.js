@@ -1,7 +1,6 @@
 const express = require('express');
 const { default: axios } = require('axios');
 const router = express.Router();
-const moment = require("moment")
 const LogsController = require('../controllers/logs');
 const ContainerController = require('../controllers/containers')
 router.get('/', (req, res) => {
@@ -34,7 +33,7 @@ router.all('/webhook', async (req, res) => {
     const container = {
       "source": "EUFORIA",
       "company": "CGI",
-      "status": "CERRADO - APROBADO POR EL CLIENTE",
+      "status_bpo": "CERRADO - APROBADO POR EL CLIENTE",
       "reference": order.CustomerPO,
       "reference_alt": String(payload.UniqueId).padStart(4, "0"),
       "total_amount": order.TotalAmount,

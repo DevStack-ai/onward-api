@@ -3,21 +3,22 @@ const router = express.Router()
 const axios = require('axios')
 const moment = require('moment')
 const containers = require("../../controllers/containers")
-const history = require("../../controllers/history")
 
+const { Containers, History } = require("../../db/sequelize")
+const { v4: uuidv4 } = require("uuid")
+const { toWhere } = require('../helpers')
 const ExcelJS = require('exceljs');
-const helpers = require("../../controllers/helpers")
-
-const db = require("../../firebase/firestore")
-
 const ship = "https://shipsgo.com/api/v1.1/ContainerService/GetContainerInfo/"
 const auth = "4456b633eafbae2220fa4311d6d04dd0"
+
 router.post("/", async (req, res) => {
     try {
         const uids = req.body.containers
         let queue = []
 
-        const documents = await containers.getMultiple(uids, "array")
+        const where = uids.map(uid => ({ uid }))
+        const documents = await Containers.find({ where })
+
 
         for (const uid of uids) {
             const query = axios.get(`${ship}?authCode=${auth}&requestId=${uid}`)
@@ -38,7 +39,7 @@ router.post("/", async (req, res) => {
         for (const track of response) {
             const uid = track.ContainerNumber
             track.last_api_request = moment().format("YYYY-MM-DD HH:mm")
-            const query = containers.update(uid, track)
+            const query = Containers.update(track, { where: { uid } })
             queue.push(query)
         }
 
@@ -54,20 +55,30 @@ router.post("/table", async (req, res) => {
     try {
         let queue = []
 
-        const page = req.body.page || 1
-        const itemsPerPage = req.body.itemsPerPage || 15
 
-        const options = {
-            page,
-            itemsPerPage,
-            includeDeprecated: true,
-            orderBy: "close_date"
-        }
-        const filters = req.body.filters
 
-        const table = await containers.getTable(options, filters)
+        const itemsPerPage = req.body.itemsPerPage
+        const filters = req.body.filters || {}
 
-        for (const container of table.documents) {
+        const hasFilters = Object.keys(filters).length
+        const where = hasFilters ? toWhere(filters) : {}
+
+        const page = req.body.page ? parseInt(req.body.page) : 1;
+        const skip = itemsPerPage * page - itemsPerPage
+        const order = [["close_date", "DESC"]]
+
+        const query = hasFilters ?
+            Containers.findAll({ where, order, offset: skip, limit: itemsPerPage }) :
+            Containers.findAll({ order, offset: skip, limit: itemsPerPage });
+
+        const queryCount = hasFilters ?
+            Containers.count({ where }) :
+            Containers.count();
+
+        const count = await queryCount
+        const items = await query
+
+        for (const container of items) {
             const today = moment()
             const last_api = container.last_api_request ? moment(container.last_api_request) : moment()
             const difference = today.diff(last_api, "hours")
@@ -80,7 +91,8 @@ router.post("/table", async (req, res) => {
         const fulfilled = result.filter(q => q.status === "fulfilled")
         const response = fulfilled.map(q => q.value.data[0])
 
-        const documents = table.documents.map(container => {
+        const documents = items.map(_container => {
+            const container = _container.dataValues
             const api = response.find(d => d.ContainerNumber === container.uid) || {}
             return {
                 ...container,
@@ -91,16 +103,16 @@ router.post("/table", async (req, res) => {
         for (const track of response) {
             const uid = track.ContainerNumber
             track.last_api_request = moment().format("YYYY-MM-DD HH:mm")
-            const query = containers.update(uid, track)
+            const query = Containers.update(track, { where: { uid } })
             queue.push(query)
         }
 
         await Promise.allSettled(queue)
 
         res.send({
-            pages: table.pages,
+            pages: Math.ceil(count / itemsPerPage),
             documents: documents,
-            total: table.count,
+            total: count,
         });
     } catch (err) {
         console.log(err);
@@ -112,13 +124,19 @@ router.post("/table", async (req, res) => {
 router.post("/all", async (req, res) => {
     try {
 
-        const options = { withoutPagination: true, includeDeprecated: true, manualSort: true }
+        const order = [["close_date", "DESC"]]
 
-        const table = await containers.getTable(options)
+        const query = Containers.findAll({ order })
+
+        const queryCount = Containers.count();
+
+        const count = await queryCount
+        const items = await query
+
         res.send({
-            pages: table.pages,
-            documents: table.documents,
-            total: table.count,
+            pages: Math.ceil(items.length / count),
+            documents: items,
+            total: count,
         });
 
     } catch (err) {
@@ -132,54 +150,61 @@ router.get("/:uid", async (req, res) => {
 
 
     const uid = req.params.uid.trim()
-    const document = await containers.get(uid)
+    const document = await Containers.findOne({ where: { uid } })
     if (!document) {
         res.status(404).send({ message: "Container not found" })
         return
     }
-    let container = { ...document }
-    console.log({ container })
+    let container = { ...document.dataValues }
 
     const today = moment()
     const last_api = container.last_api_request ? moment(container.last_api_request) : moment()
     const difference = today.diff(last_api, "hours")
 
     if (difference >= 1 || !container.last_api_request) {
-        const query = axios.get(`${ship}?authCode=${auth}&requestId=${document.container}`)
+        const query = axios.get(`${ship}?authCode=${auth}&requestId=${document.container || document.ContainerNumber}`)
         const [result] = await Promise.allSettled([query])
-        console.log(result)
         if (result.status === "fulfilled") {
             container = { ...container, ...(result.value.data[0]), last_api_request: moment().format("YYYY-MM-DD HH:mm") }
         }
     }
 
     res.status(200).send(container)
-    await containers.update(uid, container)
+    await Containers.update(container, { where: { uid } })
+
 })
 router.post("/create", async (req, res) => {
     try {
 
         const payload = req.body
-        let controller = containers
+        let isHistory = false
         if (payload.close_date) {
             payload.close_data_query = moment(payload.close_date).toDate()
         } else {
             payload.close_data_query = moment("1900-01-01").toDate()
         }
-        if (payload.status) {
-            if (["PAGADO", "ANULADO"].includes(payload.status)) {
-                controller = history
+        if (payload.status_bpo) {
+            if (["PAGADO", "ANULADO"].includes(payload.status_bpo)) {
+                isHistory = true
             }
         }
-        let container = { ...payload, uid: null }
+        let container = { ...payload, uid: uuidv4() }
         const query = axios.get(`${ship}?authCode=${auth}&requestId=${container.container}`)
         const [result] = await Promise.allSettled([query])
         if (result.status === "fulfilled") {
             container = { ...container, ...(result.value.data[0]), last_api_request: moment().format("YYYY-MM-DD HH:mm") }
         }
 
-        const uid = await controller.create(container)
-        res.status(201).send(uid)
+        if (!isHistory) {
+            console.log(Containers)
+            const newContainer = new Containers({ ...container })
+            await newContainer.save()
+            res.status(201).send({ uid: newContainer.uid })
+        } else {
+            const newContainer = new History(container)
+            await newContainer.save()
+            res.status(201).send({ uid: newContainer.uid })
+        }
 
     } catch (err) {
         console.log(err);
@@ -193,8 +218,8 @@ router.put("/:uid", async (req, res) => {
         const uid = req.params.uid
 
         const payload = req.body
-        const _container = await containers.get(uid)
-        const container = { ..._container, ...payload }
+        const _container = await Containers.findOne({ where: { uid } })
+        const container = { ..._container.dataValues, ...payload }
         const mock = {
             "SO_NUMERO_DOC": container.docto_no,
             "SO_COMPANY_CODE": "10",
@@ -202,7 +227,7 @@ router.put("/:uid", async (req, res) => {
             "SO_CUSTOMER_COD": container.customer_id,
             "SO_CUSTOMER_NAME": container.customer,
             "SO_STATUS_COD": "200",
-            "SO_STATUS": container.status,
+            "SO_STATUS": container.status_bpo,
             "SO_MONTO": container.total_amount,
             "Entry_Number": container.entry_number,
             "Referencia": container.reference,
@@ -229,20 +254,20 @@ router.put("/:uid", async (req, res) => {
         } else {
             payload.close_data_query = moment("1900-01-01").toDate()
         }
-        if (payload.status) {
-            if (["PAGADO", "ANULADO"].includes(payload.status)) {
-                const container = await containers.get(uid)
-                await history.create({
+        if (payload.status_bpo) {
+            if (["PAGADO", "ANULADO"].includes(payload.status_bpo)) {
+                const newContainer = new History({
                     uid,
                     ...container,
                     ...payload
                 })
-                await containers.delete(uid)
+                await newContainer.save()
+                await _container.destroy()
                 res.status(201).send({ message: "updated successfully" })
                 return;
             }
         }
-        await containers.update(uid, payload)
+        await Containers.update(payload, { where: { uid } })
 
         res.status(201).send({ message: "updated successfully" })
 
@@ -258,8 +283,8 @@ router.delete("/:uid", async (req, res) => {
 
         const uid = req.params.uid
 
-
-        await containers.delete(uid)
+        const container = await Containers.findOne({ uid });
+        await container.destroy()
 
         res.status(201).send({ message: "deprecated successfully" })
 
@@ -276,28 +301,9 @@ router.post("/export", async (req, res) => {
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', 'attachment; filename=reporte.xlsx');
 
-        console.log(req.body)
         const uids = req.body.containers
-        let queue = []
-
-        const documents = await containers.getMultiple(uids, "array")
-
-        for (const uid of uids) {
-            const query = axios.get(`${ship}?authCode=${auth}&requestId=${uid}`)
-            queue.push(query)
-        }
-        const result = await Promise.allSettled(queue)
-        const fulfilled = result.filter(q => q.status === "fulfilled")
-        const response = fulfilled.map(q => q.value.data[0])
-
-        const data = uids.map(uid => {
-            const api = response.find(d => d.ContainerNumber === uid) || {}
-            const match = documents.find(d => d.uid === uid) || {}
-            return {
-                ...api,
-                ...match
-            }
-        })
+        const order = [["close_date", "DESC"]]        
+        const containers = await Containers.findAll({ order })
 
         const ExportFields = {
             s_no: "No.",
@@ -351,8 +357,8 @@ router.post("/export", async (req, res) => {
 
 
         let counter = 1;
-        data.forEach((row) => {
-            let _row = { ...row }
+        containers.forEach((row) => {
+            let _row = { ...row.dataValues }
             _row.s_no = counter;
             worksheet.addRow(_row);
             counter++;
@@ -366,17 +372,5 @@ router.post("/export", async (req, res) => {
         res.status(400).send({ message: "server error" })
     }
 })
-router.post("/test", async (req, res) => {
-    try {
 
-        const query = await db.collection("own_containers").orderBy("close_data_query").get()
-        const containers = query.docs.map(helpers.toJSON).map(d => d.close_date)
-        res.send({ containers })
-    } catch (err) {
-        console.log(err);
-
-        res.status(400).send({ message: "server error" })
-        return;
-    }
-})
 module.exports = router
