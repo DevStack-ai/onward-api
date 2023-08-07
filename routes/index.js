@@ -1,9 +1,9 @@
 const express = require('express');
 const { default: axios } = require('axios');
 const router = express.Router();
-const moment = require("moment")
-const LogsController = require('../controllers/logs');
-const ContainerController = require('../controllers/containers')
+
+const { Containers } = require("../db/sequelize")
+
 router.get('/', (req, res) => {
   res.send("ok");
 });
@@ -28,13 +28,12 @@ router.all('/webhook', async (req, res) => {
     const query = await axios.get(`${url}?docNo=${payload.UniqueId}`, { headers })
 
     const order = query.data
-    console.log(order)
-    await ContainerController.create(container)
-
+    const newContainer = Containers({ ...container })
+    await newContainer.save()
     const container = {
       "source": "EUFORIA",
       "company": "CGI",
-      "status": "CERRADO - APROBADO POR EL CLIENTE",
+      "status_bpo": "CERRADO - APROBADO POR EL CLIENTE",
       "reference": order.CustomerPO,
       "reference_alt": String(payload.UniqueId).padStart(4, "0"),
       "total_amount": order.TotalAmount,
