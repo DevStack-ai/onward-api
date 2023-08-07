@@ -5,7 +5,6 @@ const cookieParser = require('cookie-parser');
 const logger = require('morgan');
 const helmet = require('helmet');
 const http = require('http')
-const indexRouter = require('./routes/index');
 const cors = require('cors')
 const errorHandler = require('./middleware/errorHandler');
 const axios = require('axios').default
@@ -19,7 +18,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-app.use('/', indexRouter);
 app.use('/proxy', async (req, res, next) => {
   try{
 
