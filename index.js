@@ -1,7 +1,6 @@
 require('dotenv').config();
 
 const express = require('express');
-const createError = require('http-errors');
 const cookieParser = require('cookie-parser');
 const logger = require('morgan');
 const helmet = require('helmet');
@@ -9,7 +8,7 @@ const http = require('http')
 const indexRouter = require('./routes/index');
 const cors = require('cors')
 const errorHandler = require('./middleware/errorHandler');
-
+const axios = require('axios').default
 const app = express();
 
 app.set('port', process.env.PORT || 3001)
@@ -21,16 +20,32 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
 app.use('/', indexRouter);
+app.use('/proxy', async (req, res, next) => {
+  try{
 
-app.use((req, res, next) => {
-  console.log(req.path)
-  next(createError.NotFound());
-});
+    req.url = req.url.replace("/proxy", "")
+    console.log(req.url)
+    const query = await axios({
+      method: req.method,
+      baseURL: "http://79.143.91.197/api",
+      url: req.url,
+      params: req.params,
+      data: req.body,
+      headers: req.headers,
+    })
+    res.send(query.data)
+  }catch(err){
+    console.log(err)
+    next()
+  }
+})
 
 app.use(errorHandler);
 
-http.createServer(app).listen(app.get('port'), () => {
-  console.log('Express server listening on port ' + app.get('port'))
+const server = http.createServer(app)
+
+server.listen(app.get('port'), () => {
+  console.log(`listening on port ${app.get('port')}`)
 })
 
 module.exports = app;
