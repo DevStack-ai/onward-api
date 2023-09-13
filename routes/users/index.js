@@ -70,23 +70,28 @@ router.post("/", async (req, res) => {
             const oldItem = await Users.findOne({ where: { email } });
             console.log("oldItem", oldItem)
             if (!oldItem) {
-
-                const firebase_auth = await auth.createUser({
-                    email: email,
-                    password: password,
-                })
-
-                const newUser = {
-                    uid: firebase_auth.uid,
+                let  newUser = {
                     email: email,
                     password: password,
                     role: role,
                 }
+              
+                if(req.body.uid){
+                    newUser.uid = req.body.uid
+                }else{
+                    const firebase_auth = await auth.createUser({
+                        email: email,
+                        password: password,
+                    })
+                    newUser.uid = firebase_auth.uid
+                }
+
+                
                 const document = new Users({ ...newUser })
 
                 await document.save();
                 res.status(200)
-                res.json({ id: firebase_auth.uid })
+                res.json({ id: newUser.uid })
 
             } else {
                 res.status(400).json({

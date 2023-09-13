@@ -31,6 +31,7 @@ module.exports = (sequelize, type) => {
         lfd: type.STRING,
         lfd_fee: type.STRING,
         estimated_date: type.STRING,
+        arrival_date: type.STRING,
         delivery_date: type.STRING,
         obs: type.STRING,
         container: type.STRING,

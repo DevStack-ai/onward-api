@@ -283,7 +283,7 @@ router.delete("/:uid", async (req, res) => {
 
         const uid = req.params.uid
 
-        const container = await Containers.findOne({ uid });
+        const container = await Containers.findOne({ where: { uid } });
         await container.destroy()
 
         res.status(201).send({ message: "deprecated successfully" })
