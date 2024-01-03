@@ -256,11 +256,14 @@ router.put("/:uid", async (req, res) => {
         }
         if (payload.status_bpo) {
             if (["PAGADO", "ANULADO"].includes(payload.status_bpo)) {
-                const newContainer = new History({
+                const _his = {
+                    id: null,
                     uid,
                     ...container,
                     ...payload
-                })
+                }
+                delete _his.id;
+                const newContainer = new History(_his)
                 await newContainer.save()
                 await _container.destroy()
                 res.status(201).send({ message: "updated successfully" })

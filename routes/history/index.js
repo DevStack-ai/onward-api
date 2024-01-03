@@ -177,12 +177,12 @@ router.get("/:uid", async (req, res) => {
 
 router.put("/:uid", async (req, res) => {
     const uid = req.params.uid
-    const document = await history.get(uid)
+    const document = await History.findOne({ where: { uid } })
     if (!document) {
         res.status(404).send({ message: "Container not found" })
         return
     }
-    let container = { ...document }
+    let container = { ...document.dataValues, ...req.body }
 
     const today = moment()
     const last_api = container.last_api_request ? moment(container.last_api_request) : moment()
@@ -196,7 +196,7 @@ router.put("/:uid", async (req, res) => {
     }
 
     res.status(200).send(container)
-    await history.update(uid, container)
+    await History.update(container, { where: { uid } })
 })
 router.delete("/:uid", async (req, res) => {
     try {

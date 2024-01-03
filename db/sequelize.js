@@ -21,7 +21,7 @@ const History = HistoryModel(sequelize, Sequelize)
 const Containers = ContainerModel(sequelize, Sequelize);
 
 
-sequelize.sync()
+sequelize.sync({ logs: false, alter: true })
     .then(() => {
         console.log('DB connected *');
     });

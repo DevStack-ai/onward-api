@@ -48,6 +48,7 @@ module.exports = (sequelize, type) => {
         GateOutDate: type.STRING,
         FormatedTransitTime: type.STRING,
         last_api_request: type.STRING, 
+        country: type.STRING
     })
 };
 
