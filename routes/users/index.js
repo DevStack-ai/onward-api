@@ -128,7 +128,7 @@ router.put("/:uid", async (req, res) => {
         const fields = req.body
 
         const document = await Users.findOne({ where: { uid } });
-        console.log(id, document)
+        console.log(uid, document)
         if (!document) {
             res.status(404).json("user not found");
             return;
@@ -137,6 +137,10 @@ router.put("/:uid", async (req, res) => {
         if (fields.email) document.email = fields.email
         if (fields.name) document.name = fields.name
 
+        if(fields.password){
+            await auth.updateUser(uid, {password:fields.password })
+            document.password = fields.password
+        }
         await document.save()
 
         res.status(200).send(document)
