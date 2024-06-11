@@ -77,6 +77,20 @@ router.all('/webhook', async (req, res) => {
     console.log(err)
   }
 });
+
+router.post("/contenedor", async (req, res) => {
+  try {
+    const container = req.body
+    const newContainer = Containers({ ...container })
+    await newContainer.save()
+    res.status(201)
+    res.send({ message: "created", data: newContainer.uid })
+  } catch (err) {
+    console.log(err)
+    res.status(400).send({ message: "server error" })
+  }
+})
+
 router.use("/users", require("./users"))
 router.use("/containers", require("./containers"))
 router.use("/history", require("./history"))

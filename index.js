@@ -20,26 +20,6 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
 app.use('/', indexRouter);
-app.use('/proxy', async (req, res, next) => {
-  try{
-
-    req.url = req.url.replace("/proxy", "")
-    console.log(req.url)
-    const query = await axios({
-      method: req.method,
-      baseURL: "http://79.143.91.197/api",
-      url: req.url,
-      params: req.params,
-      data: req.body,
-      headers: req.headers,
-    })
-    res.send(query.data)
-  }catch(err){
-    console.log(err)
-    next()
-  }
-})
-
 app.use(errorHandler);
 
 const server = http.createServer(app)
